@@ -3,95 +3,110 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" 
-          integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" 
-          crossorigin="anonymous">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
     <title>TODOs List</title>
+
     <style>
         .completed {
             text-decoration: line-through;
             color: gray;
         }
+
+        .stats-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
     </style>
 </head>
+
 <body>
 <div class="container my-4">
     <h2 class="text-center">TODOs List</h2>
 
     <div class="form-group">
-        <label for="title">Title</label>
-        <input type="text" class="form-control" id="title" aria-describedby="titleHelp" oninput="checkInputs()">
-        <small id="titleHelp" class="form-text text-muted">Add an item to the list</small>
+        <label>Title</label>
+        <input type="text" class="form-control" id="title" oninput="checkInputs()">
     </div>
 
     <div class="form-group">
-        <label for="description">Description</label>
+        <label>Description</label>
         <textarea class="form-control" id="description" rows="3" oninput="checkInputs()"></textarea>
     </div>
 
     <button id="add" class="btn btn-primary" disabled>Add to list</button>
     <button id="clear" class="btn btn-danger">Clear list</button>
 
-    <div id="items" class="my-4">
+    <div class="my-4">
         <h2>Your Items</h2>
+
         <table class="table">
             <thead>
                 <tr>
-                    <th scope="col">SNo</th>
-                    <th scope="col">Item Title</th>
-                    <th scope="col">Item Description</th>
-                    <th scope="col">Completed</th>
-                    <th scope="col">Actions</th>
+                    <th>SNo</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
-            <tbody id="tableBody">
-            </tbody>
+
+            <tbody id="tableBody"></tbody>
         </table>
+
+        <!-- STATUS SECTION -->
+        <div class="stats-box">
+            <h5>Status Summary</h5>
+            <p>Total Tasks: <span id="totalTasks">0</span></p>
+            <p>Completed Tasks: <span id="completedTasks">0</span></p>
+            <p>Pending Tasks: <span id="pendingTasks">0</span></p>
+        </div>
     </div>
 </div>
 
 <script>
     let editId = null;
 
-    // Enable or disable add/update button
     function checkInputs() {
         let title = document.getElementById('title').value.trim();
         let desc = document.getElementById('description').value.trim();
         document.getElementById('add').disabled = (title === "" || desc === "");
     }
 
-    // Fetch items from localStorage
     function getItems() {
-        return localStorage.getItem('itemsJson') ? JSON.parse(localStorage.getItem('itemsJson')) : [];
+        return localStorage.getItem('itemsJson')
+            ? JSON.parse(localStorage.getItem('itemsJson'))
+            : [];
     }
 
-    // Save items to localStorage
     function saveItems(items) {
         localStorage.setItem('itemsJson', JSON.stringify(items));
     }
 
-    // Add or update an item
     function getAndUpdate() {
         let title = document.getElementById('title').value.trim();
         let desc = document.getElementById('description').value.trim();
 
-        if(title === "" || desc === "") return; // Safety check
+        if (!title || !desc) return;
 
         let items = getItems();
 
-        if(editId !== null) {
-            // Update existing item
-            let index = items.findIndex(item => item.id === editId);
-            if(index !== -1) {
+        if (editId !== null) {
+            let index = items.findIndex(i => i.id === editId);
+            if (index !== -1) {
                 items[index].title = title;
                 items[index].desc = desc;
             }
             editId = null;
             document.getElementById('add').textContent = "Add to list";
         } else {
-            // Add new item
-            let item = { id: Date.now(), title: title, desc: desc, completed: false };
-            items.push(item);
+            items.push({
+                id: Date.now(),
+                title,
+                desc,
+                completed: false
+            });
         }
 
         saveItems(items);
@@ -101,76 +116,84 @@
         update();
     }
 
-    // Update table
     function update() {
         let items = getItems();
         let tableBody = document.getElementById("tableBody");
+
         tableBody.innerHTML = "";
 
+        let total = items.length;
+        let completed = items.filter(i => i.completed).length;
+        let pending = total - completed;
+
         items.forEach((item, index) => {
-            let completedClass = item.completed ? "completed" : "";
+            let cls = item.completed ? "completed" : "";
+
             tableBody.innerHTML += `
                 <tr>
-                    <th scope="row">${index + 1}</th>
-                    <td class="${completedClass}">${item.title}</td>
-                    <td class="${completedClass}">${item.desc}</td>
+                    <td>${index + 1}</td>
+                    <td class="${cls}">${item.title}</td>
+                    <td class="${cls}">${item.desc}</td>
                     <td>
-                        <input type="checkbox" ${item.completed ? "checked" : ""} onclick="toggleComplete(${item.id})">
+                        <input type="checkbox" ${item.completed ? "checked" : ""} 
+                        onclick="toggleComplete(${item.id})">
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-warning" onclick="editItem(${item.id})">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleted(${item.id})">Delete</button>
+                        <button class="btn btn-warning btn-sm" onclick="editItem(${item.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">Delete</button>
                     </td>
                 </tr>
             `;
         });
+
+        // update stats
+        document.getElementById("totalTasks").innerText = total;
+        document.getElementById("completedTasks").innerText = completed;
+        document.getElementById("pendingTasks").innerText = pending;
     }
 
-    // Delete an item
-    function deleted(id) {
+    function deleteItem(id) {
         let items = getItems();
-        items = items.filter(item => item.id !== id);
+        items = items.filter(i => i.id !== id);
         saveItems(items);
         update();
     }
 
-    // Edit an item
+    function toggleComplete(id) {
+        let items = getItems();
+        let i = items.findIndex(x => x.id === id);
+
+        if (i !== -1) {
+            items[i].completed = !items[i].completed;
+            saveItems(items);
+            update();
+        }
+    }
+
     function editItem(id) {
         let items = getItems();
-        let item = items.find(item => item.id === id);
-        if(item) {
+        let item = items.find(i => i.id === id);
+
+        if (item) {
             document.getElementById('title').value = item.title;
             document.getElementById('description').value = item.desc;
+
             editId = id;
             document.getElementById('add').textContent = "Update";
             checkInputs();
         }
     }
 
-    // Toggle completed status
-    function toggleComplete(id) {
-        let items = getItems();
-        let index = items.findIndex(item => item.id === id);
-        if(index !== -1) {
-            items[index].completed = !items[index].completed;
-            saveItems(items);
-            update();
-        }
-    }
-
-    // Clear all items
     function clearStorage() {
-        if(confirm("Do you really want to clear the list?")) {
+        if (confirm("Clear all tasks?")) {
             localStorage.clear();
             update();
         }
     }
 
-    // Event listeners
     document.getElementById("add").addEventListener("click", getAndUpdate);
     document.getElementById("clear").addEventListener("click", clearStorage);
 
-    // Initial table population
     update();
 </script>
 </body>
